@@ -8,20 +8,26 @@ draw = function(img, dir=NA, title=NA) {
   rasterImage(png,0,0,1,1)
 }
 
-convert2D = function(png) png[,,1]
+convert2D = function(png) {
+  res = NULL
+  res$img = png[,,1]
+  res
+}
 
-crop = function(png) {
-  if(length(dim(png)) != 2) {
+crop = function(img) {
+  if(length(dim(img$img)) != 2) {
     stop("2 dims excpected")
   }
-  pngN = !png
+  pngN = !img$img
   row = which(apply(pngN, 1, any))
   ymin = head(row, 1)
   ymax = tail(row, 1)
   col = which(apply(pngN, 2, any))
   xmin = head(col, 1)
   xmax = tail(col, 1)
-  list(img=png[ymin:ymax,xmin:xmax], ymin=ymin)
+  img$img = img$img[ymin:ymax,xmin:xmax]
+  img$ymin=ymin
+  img
 }
 
 im1 = crop(png)
@@ -38,6 +44,34 @@ align = function(im1, im2) {
   list(a=res1, b=res2)
 }
 
+
+vecCrossing = function(vec) {
+  sum(mapply( 
+    function(pix1, pix2) as.numeric(pix1 != pix2), 
+    vec[-1], 
+    head(vec,-1) 
+  ))
+}
+#vecCrossing(c(1,1,1,0,0,1,0)) == 3
+
+# margin = 1 - poziomo, 2 - pionowo
+# 0 czarny, 1 bialy
+maxColorCrossing = function(mtx, margin=2) {
+  # dodaje biala ramke
+  crxs = apply(mtx, margin, vecCrossing)
+  max(crxs)
+}
+
+addColorCrossing = function(img) {
+  mtx = img$img
+  mtx = cbind(1,mtx,1)
+  mtx = rbind(1,mtx,1)
+  poziom = maxColorCrossing(mtx,1)
+  pion = maxColorCrossing(mtx,2)
+  img$maxColorCrs = c(poziom,pion)
+  img
+}
+
 # load, convert to 2D, crop
 library(png)
 loadImgs = function(imgVec, dir="train") {
@@ -45,9 +79,11 @@ loadImgs = function(imgVec, dir="train") {
   imgs = lapply(paths, readPNG)
   imgs = lapply(imgs, convert2D)
   imgs = lapply(imgs, crop)
+  imgs = lapply(imgs, addColorCrossing)
   names(imgs) = imgVec
   imgs
 }
+
 
 simImgMatrx = function(imgs) {
   combs = combn(1:length(imgs),2,simplify = F)

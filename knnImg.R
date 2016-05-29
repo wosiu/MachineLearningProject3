@@ -1,6 +1,26 @@
+library(parallel)
+
+# 0 czarny, 1 bialy
 simPixByPix = function(img1, img2) {
   al = align(img1$img, img2$img)
   mean(al$a == al$b)
+}
+
+simPixByPixBlackOnly = function(img1, img2) {
+  al = align(img1$img, img2$img)
+  if(!all(dim(al$a) == dim(al$b))) stop("Error in align func. Different dims returned")
+  
+  res = (al$a == al$b)
+  # put NA, where white on both
+  res[ al$a == 1 & al$b == 1 ] = NA
+  # count only pix where black appears at least at one from two images
+  mean(res, na.rm = T)
+}
+
+simCombined1 = function(img1, img2) {
+  if (img1$maxColorCrs[2] != img2$maxColorCrs[2]) 
+    return (0.0)
+  return (simPixByPixBlackOnly(img1, img2))
 }
 
 knnImg.kernel.simVal = function(orderId, simVal) { simVal }
@@ -12,7 +32,7 @@ knnImg.kernel.order = function(orderId, simVal) { orderId }
 # trainImgs lista, $img obrazek bitowy 
 knnImg.testOne = function(trainImgsList, clsVec, testImg, 
                        k = 3, 
-                       cmpFunc = simPixByPix, 
+                       cmpFunc = simPixByPixBlackOnly, 
                        # jaki wpływ będzię mięc obiekt treningowy na głosowanie klasy
                        # orderId to id po posortowaniu wartosci podobienstw z obiektem testowanym (1 do k)
                        # simVal to wartosc podobienstwa pomiedzy danym obiektem treningowym a testowanym
@@ -75,8 +95,9 @@ knnImg.test = function(trainImgsList, clsVec, testImgsList, mc.cores=1, ...) {
         c2 = row$simRow[,"sim"]
         c2 = t(c2)
         colnames(c2) = as.character(row$simRow[,"trainId"])
+        c1 = cbind(c1,c2)
       }
-      cbind(c1,c2)
+      c1
   })) 
   #tmp = listToDF(trainPreds)
   tmp

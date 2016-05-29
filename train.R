@@ -34,9 +34,26 @@ trainSimMatrixR = round(trainSimMatrix, 2)
 clsVecTr = trainDf[,"char"]
 length(trainImgPix) == length(clsVecTr)
 
+
+# TRAIN 2
+trainImg = list.files(path="train2/", pattern = ".*\\.png")
+trainDf = splitImgNames(trainImg)
+clsVecTr = trainDf[,"char"]
+trainImgPix = loadImgs( as.character(trainDf[,"validImg"]), dir="train2" )
+length(trainImgPix)
+
+# VALID as TRAIN
+trainImg = list.files(path="valid/", pattern = ".*\\.png")
+trainDf = splitImgNames(trainImg)
+clsVecTr = trainDf[,"char"]
+trainImgPix = loadImgs( as.character(trainDf[,"validImg"]), dir="valid" )
+length(trainImgPix)
+
+
+
 ################## knnImg #############################################
 # sprawdzamy skutecznosc na zbiorze treningowym - nie powinien sie mylic
-trainPreds = knnImg.test(trainImgPix, clsVecTr, trainImgPix, k = 1, returnSimRow = T)
+trainPreds = knnImg.test(trainImgPix, clsVecTr, trainImgPix, k = 1, returnSimRow = T, mc.cores = 8)
 tmp = (trainPreds[,"predCls"] == as.character(clsVecTr))
 mean(tmp)
 clsVecTr[!tmp]
@@ -50,28 +67,33 @@ validClsVec = validDf[,"char"]
 validImgPix = loadImgs( validDf[,"validImg"], dir="valid" )
 validPreds = knnImg.test(trainImgPix, clsVecTr, validImgPix, k = 1, returnSimRow = T, mc.cores = 8)
 tmp = (validPreds[,"predCls"] == as.character(validClsVec))
-mean(tmp)
+mean(tmp) 
 validClsVec[!tmp]
 validPreds[!tmp,]
 
 # done
 doneImgDf = splitImgNames(validAllImg)
+rm = which(grepl("[kd].png", doneImgDf[,"validImg"]))
+doneImgDf = doneImgDf[-rm,]
 
 # na testowym
 allImg = list.files(path="png/", pattern = ".*\\.png")
 testImg = setdiff(allImg, doneImgDf[,"orgImg"])
-length(testImg) + nrow(doneImgDf) == 6168
+length(testImg) + nrow(doneImgDf) == 6168 # kilka dodałem i znalazlo sie w walidacyjnym
 testImgPix = loadImgs( testImg, dir="png" )
-testPreds = knnImg.test(trainImgPix, clsVecTr, testImgPix, k = 1, mc.cores = 8)
+testPreds = knnImg.test(trainImgPix, clsVecTr, testImgPix,
+                        cmpFunc = simPixByPixBlackOnly,
+                        k = 1, returnSimRow = F, mc.cores = 8)
 testResDf = data.frame(cbind(orgImg=testImg,char=testPreds[,"predCls"]), stringsAsFactors = F)
 nrow(testResDf)
+
 
 # collect results
 doneResDf = doneImgDf[,c(3,1)]
 
 result = rbind(testResDf, doneResDf)
 nrow(result) == 6168
-rownames(result) = result["orgImg"]
+rownames(result) = result[,"orgImg"]
 
 # sprawdzenie ilu klas brakuje, dorobimy w jakichs fuck elementach
 setdiff(clsAll, result[,"char"])
@@ -81,7 +103,7 @@ fuckImg = list.files(path="fuck/", pattern = ".*\\.png")
 fuckDf = splitImgNames(fuckImg)
 fuckResDf = fuckDf[,c(3,1)]
 result[fuckResDf[,"orgImg"],"char"] = fuckResDf[,"char"]
-nrow(result)
+nrow(result) == 6168
 
 length(setdiff(result[,"char"], clsAll)) == 0
 length(setdiff(clsAll, result[,"char"])) == 0
@@ -93,7 +115,7 @@ names(charToInt) = clsAll
 
 resultCoded = result
 resultCoded[, "char"] = charToInt[result[,"char"]]
-write.table(resultCoded, file = "res1.csv", quote = F, sep = ",", row.names = F, col.names = F)
+write.table(resultCoded, file = "res3.csv", quote = F, sep = ",", row.names = F, col.names = F)
 
 #######################################################################
 # klastrowanie
