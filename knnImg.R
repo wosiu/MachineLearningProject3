@@ -16,8 +16,11 @@ knnImg.testOne = function(trainImgsList, clsVec, testImg,
                        # jaki wpływ będzię mięc obiekt treningowy na głosowanie klasy
                        # orderId to id po posortowaniu wartosci podobienstw z obiektem testowanym (1 do k)
                        # simVal to wartosc podobienstwa pomiedzy danym obiektem treningowym a testowanym
-                       kernelFunc = knnImg.kernel.simVal  
+                       kernelFunc = knnImg.kernel.simVal,
+                       returnSimRow = F,
+                       returnVotes = F
                       ) {
+  res = NULL
   k = min(k, length(clsVec))
   if ( length(trainImgsList) != length(clsVec) ) {
     stop ("Training list has to be the same length as clsVec")
@@ -25,6 +28,16 @@ knnImg.testOne = function(trainImgsList, clsVec, testImg,
   sims = lapply(trainImgsList, cmpFunc, testImg)
   sims = unlist(sims)
   names(sims) = clsVec
+  
+  if (returnSimRow) {
+    trainNames = names(trainImgsList)
+    if (is.null(trainNames)) trainNames = 1:length(trainImgsList)
+    simsDf = data.frame(cls = as.character(clsVec), stringsAsFactors = F)
+    simsDf = cbind(simsDf, trainId = trainNames, sim = sims)
+    #rownames(simsDf) = NULL
+    res$simRow = simsDf
+  }
+  
   simsSort = sort(sims, decreasing = T)
   
   voteCls = unique(names(sims))
@@ -36,8 +49,11 @@ knnImg.testOne = function(trainImgsList, clsVec, testImg,
     votes[cls] = votes[cls] + kernelFunc(i, simsSort[i]) 
   }
   
+  if (returnVotes) {
+    res$votes = votes
+  }
+  
   maxClsIdx = which.max(votes)
-  res = NULL
   res$predScore = votes[[maxClsIdx]]
   res$predCls = names(votes[maxClsIdx])
   res
@@ -52,7 +68,17 @@ knnImg.test = function(trainImgsList, clsVec, testImgsList, mc.cores=1, ...) {
   } else {
     trainPreds = mclapply(testImgsList, knnImg.testOne, clsVec=clsVec, trainImgsList = trainImgsList, ..., mc.cores=mc.cores)
   }
-  tmp = listToDF(trainPreds)
+  
+  tmp = do.call(rbind, lapply(trainPreds, function(row) {
+      c1 = data.frame(predScore=row$predScore, predCls = row$predCls, stringsAsFactors = F)
+      if (!is.null(row$simRow)) {
+        c2 = row$simRow[,"sim"]
+        c2 = t(c2)
+        colnames(c2) = as.character(row$simRow[,"trainId"])
+      }
+      cbind(c1,c2)
+  })) 
+  #tmp = listToDF(trainPreds)
   tmp
 }
 

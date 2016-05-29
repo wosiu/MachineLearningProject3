@@ -1,9 +1,10 @@
 library(png)
 library(imager)
 
-draw = function(img) {
+draw = function(img, dir=NA, title=NA) {
+  if (!is.na(dir)) img = paste0(dir,"/",img)
   png = readPNG(img)
-  plot(0:1,0:1,type="n",ann=FALSE,axes=FALSE)
+  plot(0:1,0:1,type="n",ann=T,xlab=NA,ylab=NA, axes=FALSE,main=title)
   rasterImage(png,0,0,1,1)
 }
 
@@ -38,11 +39,14 @@ align = function(im1, im2) {
 }
 
 # load, convert to 2D, crop
+library(png)
 loadImgs = function(imgVec, dir="train") {
   paths = paste0(dir, "/", imgVec)
   imgs = lapply(paths, readPNG)
   imgs = lapply(imgs, convert2D)
   imgs = lapply(imgs, crop)
+  names(imgs) = imgVec
+  imgs
 }
 
 simImgMatrx = function(imgs) {

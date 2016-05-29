@@ -36,7 +36,7 @@ length(trainImgPix) == length(clsVecTr)
 
 ################## knnImg #############################################
 # sprawdzamy skutecznosc na zbiorze treningowym - nie powinien sie mylic
-trainPreds = knnImg.test(trainImgPix, clsVecTr, trainImgPix, k = 1)
+trainPreds = knnImg.test(trainImgPix, clsVecTr, trainImgPix, k = 1, returnSimRow = T)
 tmp = (trainPreds[,"predCls"] == as.character(clsVecTr))
 mean(tmp)
 clsVecTr[!tmp]
@@ -48,7 +48,7 @@ validDf = splitImgNames(validImg)
 table(validDf[,"char"])
 validClsVec = validDf[,"char"]
 validImgPix = loadImgs( validDf[,"validImg"], dir="valid" )
-validPreds = knnImg.test(trainImgPix, clsVecTr, validImgPix, k = 1, mc.cores = 8)
+validPreds = knnImg.test(trainImgPix, clsVecTr, validImgPix, k = 1, returnSimRow = T, mc.cores = 8)
 tmp = (validPreds[,"predCls"] == as.character(validClsVec))
 mean(tmp)
 validClsVec[!tmp]
